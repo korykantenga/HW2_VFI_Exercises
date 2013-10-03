@@ -1,7 +1,7 @@
 %% Basic RBC model with partial depreciation and endogenous labor
 
 % Original by Jesus Fernandez-Villaverde at Haverford, July 31, 2013
-% Modifiied by Kory Kantenga at University of Pennsylvania, Sept 12, 2013
+% Modifiied by Kory Kantenga at University of Pennsylvania, Oct 3, 2013
 
 %% 0. Housekeeping
 
