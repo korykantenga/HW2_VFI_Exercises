@@ -1,7 +1,7 @@
 %% Basic RBC model with partial depreciation and endogenous labor
 
 % Original by Jesus Fernandez-Villaverde at Haverford, July 31, 2013
-% Modifiied by Kory Kantenga at University of Pennsylvania, Sept 12, 2013
+% Modifiied by Kory Kantenga at University of Pennsylvania, Oct 3, 2013
 
 %% 0. Housekeeping
 
@@ -56,6 +56,9 @@ vGridLabor = 0.5*laborSteadyState:0.005:1.5*laborSteadyState; %TODO: change step
 nGridLabor = length(vGridLabor);
 vTime = zeros(nCapitalGrids,1);
 
+%Storage for Value and Policy Functions
+
+
 
 for iCapitalStep = 1:nCapitalGrids
     
@@ -72,6 +75,7 @@ for iCapitalStep = 1:nCapitalGrids
     mValueFunction    = zeros(nGridCapital,nGridProductivity);
     mValueFunctionNew = zeros(nGridCapital,nGridProductivity);
     mPolicyFunction   = zeros(nGridCapital,nGridProductivity);
+    mConsumptionFunction = zeros(nGridCapital,nGridProductivity);
     expectedValueFunction = zeros(nGridCapital,nGridProductivity);
     
     %% 6. We pre-build output for each point in the grid
@@ -86,7 +90,7 @@ for iCapitalStep = 1:nCapitalGrids
     %% 7. Main iteration
     
     maxDifference = 10.0;
-    maxIteration = 500; %FIXME: change?
+    maxIteration = 500; %TODO: change?
     tolerance = 10^(iCapitalStep-7); %FIXME: tolerance level shrinks with grid
     iteration = 0;
     
@@ -137,6 +141,7 @@ for iCapitalStep = 1:nCapitalGrids
                 mValueFunctionNew(nCapital,nProductivity) = valueHighSoFar1;
                 mPolicyFunction(nCapital,nProductivity) = capitalChoice;
                 mLabor(nCapital,nProductivity) = laborChoice; %Labor function choosing next period capital optimally
+                mConsumptionFunction(nCapital,nProductivity) = consumption;
                 
             end %end for capital grid loop
             
@@ -160,26 +165,121 @@ for iCapitalStep = 1:nCapitalGrids
     fprintf(' seconds\n');
     fprintf('\n')
     
-        
-    %% 8. Plotting results
-    %{
-    figure(1)
+    %% 8. Euler Error Analysis
     
-    subplot(3,1,1)
+    mInterestRate = zeros(nGridCapital,nGridProductivity);
+    mInterestRatio = zeros(nGridCapital,nGridProductivity);
+    expectedInterestRatio = zeros(nGridCapital,nGridProductivity);
+    mEulerError = zeros(nGridCapital,nGridProductivity);
+    
+    for nProductivity = 1:nGridProductivity
+        for nCapital = 1:nGridCapital
+            mInterestRate(nCapital,nProductivity) = 1 - ddelta + aalpha*vProductivity(nProductivity)*...
+                (mPolicyFunction(nCapital,nProductivity)^(aalpha-1))*...
+                (mLabor(nCapital,nProductivity)^(1-aalpha));
+        end
+    end
+    
+    for nProductivity = 1:nGridProductivity
+        for nCapital = 1:nGridCapital
+            mInterestRatio(nCapital,nProductivity) = ...
+                mInterestRate(nCapital,nProductivity)/...
+                mConsumptionFunction(nCapital,nProductivity);
+        end
+    end
+    
+    expectedInterestRatio(:,:) = mInterestRatio(:,:)*mTransition';
+    
+    for nProductivity = 1:nGridProductivity
+        for nCapital = 1:nGridCapital
+            mEulerError(nCapital,nProductivity) = log10(abs(1 - ...
+                mConsumptionFunction(nCapital,nProductivity)*bbeta*...
+                expectedInterestRatio(nCapital,nProductivity)));
+        end
+    end
+    
+    
+    
+    %% 9. Plotting results
+    
+    %{
+    figure;
+    
+    subplot(2,2,1)
     plot(vGridCapital,mValueFunction)
     xlim([vGridCapital(1) vGridCapital(nGridCapital)])
     title('Value Function')
     
-    subplot(3,1,2)
+    subplot(2,2,2)
     plot(vGridCapital,mPolicyFunction)
     xlim([vGridCapital(1) vGridCapital(nGridCapital)])
     title('Policy Function')
     
-    subplot(3,1,3)
+    subplot(2,2,3)
     plot(vGridCapital,mLabor)
     xlim([vGridCapital(1) vGridCapital(nGridCapital)])
-    title('Labor Function choosing Future Capital Optimally')
+    title('Labor Function')
+    
+    subplot(2,2,4)
+    plot(vGridCapital,mEulerError)
+    xlim([vGridCapital(1) vGridCapital(nGridCapital)])
+    ylabel('
+    title('Euler Equation Error')
+    
     %}
+    
+    %% 10. Store for Comparison when z = 0
+    
+    aComparison{iCapitalStep} = [vGridCapital' mValueFunction(:,3)...
+                                 mPolicyFunction(:,3) mLabor(:,3) mEulerError(:,3)]; %#ok<SAGROW>
+    
 end
+
+%% 11. Plot Comparison between Grids when z = 0
+
+subplot(2,2,1)
+%Value Function
+hold on
+plot(aComparison{1}(:,1),aComparison{1}(:,2))
+plot(aComparison{2}(:,1),aComparison{2}(:,2),'r')
+plot(aComparison{3}(:,1),aComparison{3}(:,2),'g')
+xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
+legend('19849 Points', '1985 Points', '199 Points')
+title('Value Function for z=0')
+hold off
+
+subplot(2,2,2)
+%Policy Function
+hold on
+plot(aComparison{1}(:,1),aComparison{1}(:,3))
+plot(aComparison{2}(:,1),aComparison{2}(:,3),'r')
+plot(aComparison{3}(:,1),aComparison{3}(:,3),'g')
+xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
+legend('19849 Points', '1985 Points', '199 Points')
+title('Policy Function for z=0')
+hold off
+
+subplot(2,2,3)
+%Policy Function
+hold on
+plot(aComparison{1}(:,1),aComparison{1}(:,4))
+plot(aComparison{2}(:,1),aComparison{2}(:,4),'r')
+plot(aComparison{3}(:,1),aComparison{3}(:,4),'g')
+legend('19849 Points', '1985 Points', '199 Points')
+xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
+title('Labor Function for z=0')
+hold off
+
+subplot(2,2,4)
+%Policy Function
+hold on
+plot(aComparison{1}(:,1),aComparison{1}(:,5))
+plot(aComparison{2}(:,1),aComparison{2}(:,5),'r')
+plot(aComparison{3}(:,1),aComparison{3}(:,5),'g')
+legend('19849 Points', '1985 Points', '199 Points')
+xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
+title('Euler Error for z=0')
+ylabel('Log10|Euler Equation Error|')
+hold off
 
 toc
