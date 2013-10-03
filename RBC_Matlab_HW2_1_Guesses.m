@@ -44,7 +44,7 @@ fprintf(' Capital = %2.6f, Consumption = %2.6f\n',  capitalSteadyState, consumpt
 fprintf('\n');
 
 % We generate the grid of capital
-vGridCapital = 0.5*capitalSteadyState:0.00001:1.5*capitalSteadyState; %TODO: change step to 0.00001 - modified 9/10/13
+vGridCapital = 0.5*capitalSteadyState:0.00006:1.5*capitalSteadyState; %TODO: 19849 Grid Points
 vGridLabor = 0.5*laborSteadyState:0.005:1.5*laborSteadyState; %TODO: change step?
 
 nGridLabor = length(vGridLabor);
