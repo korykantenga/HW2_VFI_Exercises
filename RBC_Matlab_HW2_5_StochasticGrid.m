@@ -43,7 +43,7 @@ fprintf(' Output = %2.6f, Labor = %2.6f\n',outputSteadyState, laborSteadyState);
 fprintf(' Capital = %2.6f, Consumption = %2.6f\n',  capitalSteadyState, consumptionSteadyState);
 fprintf('\n');
 
-%% 4. Grid Loop to Change Grid Sizes
+%% 4. Grid Loop to Change Grid
 
 %Set up cell array of capital grids and labor grid
 nCapitalGrids = 2;
