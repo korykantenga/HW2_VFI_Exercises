@@ -54,10 +54,10 @@ end
 nGridProductivity = length(vProductivity);
 vGridLabor = 0.5*laborSteadyState:0.005:1.5*laborSteadyState; %TODO: change step?
 nGridLabor = length(vGridLabor);
-vTime = zeros(nCapitalGrids,1);
+vTime = zeros(nCapitalGrids+1,1);
 
 %% 5. Multigrid Loop
-
+iTime = tic;
 for iCapitalStep = 1:3
     
     timeVFI = tic;
@@ -175,11 +175,15 @@ for iCapitalStep = 1:3
     fprintf('\n')
     
     vTime(iCapitalStep,1) = toc(timeVFI);
-    fprintf('Time for VFI = %2.8f', vTime(iCapitalStep,1));
+    fprintf('Time for step VFI = %2.8f', vTime(iCapitalStep,1));
     fprintf(' seconds\n');
     fprintf('\n')
     
 end
+vTime(4,1)=toc(iTime);
+fprintf('Time for entire VFI = %2.8f', vTime(4,1));
+fprintf(' seconds\n');
+fprintf('\n')
 
 %% 9. Euler Error Analysis
 
