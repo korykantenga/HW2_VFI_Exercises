@@ -42,6 +42,7 @@ nGridLabor = length(vGridLabor);
 
 %% 3. Calibrate Disutility of Labor
 ppsi = (1/consumptionSteadyState)*3*(1-aalpha)*((((1/bbeta)+ ddelta - 1)/aalpha)^(aalpha/(aalpha-1))); %disutility of labor - added 9/12/13
+valueSteadyState = (1-bbeta)*consumptionSteadyState - ppsi*((laborSteadyState^2)/2);
 fprintf('Calibration\n');
 fprintf(' Psi = %2.6f\n', ppsi);
 fprintf('Steady State Values\n');
@@ -64,8 +65,10 @@ end
 mConsumption = zeros(nGridCapital,nGridProductivity);
 mResources        = zeros(nGridCapital,nGridProductivity);
 mLabor            = zeros(nGridCapital,nGridProductivity);
+mValueFunction = valueSteadyState*ones(nGridCapital,nGridProductivity); %#ok<NASGU>
 mValueFunctionRes = zeros(nGridCapital,nGridProductivity);
 mValueFunctionTilda = zeros(nGridCapital,nGridProductivity);
+mValueFunctionNew = zeros(nGridCapital,nGridProductivity);
 mValueFunctionTildaNew = zeros(nGridCapital,nGridProductivity);
 mValueFunctionTildaDerivative = zeros(nGridCapital,nGridProductivity);
 mPolicyFunction = zeros(nGridCapital,nGridProductivity);
@@ -76,8 +79,8 @@ expectedValueFunction = zeros(nGridCapital,nGridProductivity);
 mOutput = (vGridCapital'.^aalpha)*vProductivity*(laborSteadyState^(1-aalpha));
 
 % Use straight line as guess
-for nProductivity = 1:nGridProductivity
-    mValueFunctionTilda(:,nProductivity) = linspace(-1.5,-1,nGridCapital);
+for nCapital = 1:nGridCapital
+    mValueFunctionTilda(nCapital,:) = valueSteadyState + (nCapital/nGridCapital);
 end
 
 %% 6. Endogenous Grid iteration (labor fixed at Steady State)
@@ -90,12 +93,16 @@ fprintf('Endogenous Grid VFI\n')
 
 while (maxDifference>tolerance)
     
+    
     %Derivative V-tilda
-    for nProductivity = 1:nGridProductivity
-        tempStore = diff(mValueFunctionTilda(:,nProductivity))/0.00006;
-        a = tempStore(1,1);
-        mValueFunctionTildaDerivative(:,nProductivity) =...
-            vertcat(a,tempStore);
+    mValueFunctionTildaDerivative(1,:) =(mValueFunctionTilda(2,:)-...
+        mValueFunctionTilda(1,:))/nGridCapital;
+    mValueFunctionTildaDerivative(nGridCapital,:) =...
+        (mValueFunctionTilda(nGridCapital,:)-...
+        mValueFunctionTilda(nGridCapital-1,:))/nGridCapital;
+    for iCapital = 2:nGridCapital-1
+        mValueFunctionTildaDerivative(iCapital,:) =(mValueFunctionTilda(iCapital+1,:)-...
+            mValueFunctionTilda(iCapital-1,:))/(2*nGridCapital);
     end
     
     %Solve for consumption
@@ -113,11 +120,13 @@ while (maxDifference>tolerance)
         end
     end
     
+    mValueFunctionRes(mValueFunctionRes<-1000)=-1000;
+    
     for nProductivity = 1:nGridProductivity
-        mValueFunctionRes(:,nProductivity) =...
-            interp1(vGridResources(:,nProductivity),...
-            mValueFunctionRes(:,nProductivity),...
-            'linear','extrap');
+        mResources(:,nProductivity) = sortrows(mResources(:,nProductivity));
+        F = griddedInterpolant({mResources(:,nProductivity)},...
+            mValueFunctionRes(:,nProductivity));
+        mValueFunctionRes(:,nProductivity)=F(vGridResources(:,nProductivity));
     end
     
     mValueFunctionTildaNew = bbeta*mValueFunctionRes*mTransition';
@@ -127,9 +136,90 @@ while (maxDifference>tolerance)
     mValueFunctionTilda = mValueFunctionTildaNew;
     
     iteration = iteration+1;
+    fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, ...
+        maxDifference);
+    
+end
+
+fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference);
+fprintf('\n')
+
+mValueFunction = mValueFunctionTilda;
+
+%% 7. Recover Policy Functions
+
+fprintf('Standard VFI to Recover Policy Functions')
+
+maxDifference = 10.0;
+tolerance = 0.0000001;
+iteration = 0;
+
+%Reset Output
+mOutput = zeros(nGridCapital,nGridProductivity,nGridLabor);
+
+for j = 1:nGridLabor
+    
+    mOutput(:,:,j) = (vGridCapital'.^aalpha)*vProductivity*(vGridLabor(j)^...
+        (1-aalpha));
+    
+end
+
+while (maxDifference>tolerance)
+    
+    expectedValueFunction = mValueFunction*mTransition';
+    
+    for nProductivity = 1:nGridProductivity
+        
+        % We start from previous choice (monotonicity of policy function)
+        gridCapitalNextPeriod = 1;
+        
+        for nCapital = 1:nGridCapital
+            
+            valueHighSoFar1 = -1000.0;
+            capitalChoice  = vGridCapital(1);
+            
+            for nCapitalNextPeriod = gridCapitalNextPeriod:nGridCapital
+                
+                valueHighSoFar2 = -1000.0;
+                
+                for nLabor = 1:nGridLabor
+                    
+                    consumption = mOutput(nCapital,nProductivity,nLabor)+(1-ddelta)*vGridCapital(nCapital)-vGridCapital(nCapitalNextPeriod);
+                    valueProvisional = (1-bbeta)*(log(consumption)-ppsi*(vGridLabor(nLabor)^2)/2)+bbeta*expectedValueFunction(nCapitalNextPeriod,nProductivity);
+                    
+                    if (valueProvisional>valueHighSoFar2)
+                        valueHighSoFar2 = valueProvisional;
+                        laborChoice = vGridLabor(nLabor);
+                        gridLabor = nLabor;
+                    else
+                        break; %We break when we have achieved the max
+                    end
+                end
+                
+                
+                if (valueProvisional>valueHighSoFar1)
+                    valueHighSoFar1 = valueProvisional;
+                    capitalChoice = vGridCapital(nCapitalNextPeriod);
+                    gridCapitalNextPeriod = nCapitalNextPeriod;
+                else
+                    break; % We break when we have achieved the max
+                end
+            end
+            
+            mValueFunctionNew(nCapital,nProductivity) = valueHighSoFar1;
+            mPolicyFunction(nCapital,nProductivity) = capitalChoice;
+            mLabor(nCapital,nProductivity) = laborChoice; %Labor function choosing next period capital optimally
+            
+        end %end for capital grid loop
+        
+    end %end of productivity grid loop
+    
+    maxDifference = max(max(abs(mValueFunctionNew-mValueFunction)));
+    mValueFunction = mValueFunctionNew;
+    
+    iteration = iteration+1;
     if (mod(iteration,10)==0 || iteration ==1)
-        fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, ...
-            maxDifference);
+        fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference);
     end
     
 end
@@ -137,26 +227,65 @@ end
 fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference);
 fprintf('\n')
 
-toc
 
-%{
-%% 6. Plotting results
+%% 8. Euler Error Analysis
+
+mInterestRate = zeros(nGridCapital,nGridProductivity);
+mInterestRatio = zeros(nGridCapital,nGridProductivity);
+expectedInterestRatio = zeros(nGridCapital,nGridProductivity);
+mEulerError = zeros(nGridCapital,nGridProductivity);
+
+for nProductivity = 1:nGridProductivity
+    for nCapital = 1:nGridCapital
+        mInterestRate(nCapital,nProductivity) = 1 - ddelta + aalpha*vProductivity(nProductivity)*...
+            (mPolicyFunction(nCapital,nProductivity)^(aalpha-1))*...
+            (mLabor(nCapital,nProductivity)^(1-aalpha));
+    end
+end
+
+for nProductivity = 1:nGridProductivity
+    for nCapital = 1:nGridCapital
+        mInterestRatio(nCapital,nProductivity) = ...
+            mInterestRate(nCapital,nProductivity)/...
+            mConsumptionFunction(nCapital,nProductivity);
+    end
+end
+
+expectedInterestRatio(:,:) = mInterestRatio(:,:)*mTransition';
+
+for nProductivity = 1:nGridProductivity
+    for nCapital = 1:nGridCapital
+        mEulerError(nCapital,nProductivity) = log10(abs(1 - ...
+            mConsumptionFunction(nCapital,nProductivity)*bbeta*...
+            expectedInterestRatio(nCapital,nProductivity)));
+    end
+end
+
+
+%% 9. Plotting results
 
 figure(1)
 
-subplot(3,1,1)
+subplot(2,2,1)
 plot(vGridCapital,mValueFunction)
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 title('Value Function')
 
-subplot(3,1,2)
+subplot(2,2,2)
 plot(vGridCapital,mPolicyFunction)
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 title('Policy Function')
 
-subplot(3,1,3)
+subplot(2,2,3)
 plot(vGridCapital,mLabor)
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
-title('Labor Function choosing Future Capital Optimally')
+title('Labor Function')
 
-%}
+subplot(2,2,4)
+plot(vGridCapital,mLabor)
+xlim([vGridCapital(1) vGridCapital(nGridCapital)])
+ylabel('log10|EulerError|')
+title('Euler Error')
+
+print -depsc2 HW2_Q6_endogenousgrid.eps
+
