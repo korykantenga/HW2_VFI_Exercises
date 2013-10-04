@@ -69,8 +69,13 @@ for iCapitalStep = 1:nCapitalGrids
     vGridCapital = aCapitalGrids{iCapitalStep};
     nGridCapital = length(vGridCapital);
     
-    fprintf('Grid Size = %d', nGridCapital);
-    fprintf(' points\n');
+    if (iCapitalStep==1)
+        fprintf('Deterministic Grid Size = %d', nGridCapital);
+        fprintf(' points\n');
+    else
+        fprintf('Stochastic Grid Size = %d', nGridCapital);
+        fprintf(' points\n');
+    end
     
     %% 5. Required matrices and vectors
     mOutput           = zeros(nGridCapital,nGridProductivity,nGridLabor);
@@ -264,6 +269,8 @@ subplot(1,2,2)
 hist(aCapitalGrids{2},20);
 xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
 title('Histogram for Stochastic Grid')
+
+print -depsc2 HW2_Q5_stochastic_vs_determinstic.eps
 
 figure;
 
