@@ -308,4 +308,6 @@ title('Euler Error for z=0')
 ylabel('Log10|Euler Equation Error|')
 hold off
 
+print -depsc2 HW2_Q5_stochastic.eps
+
 toc

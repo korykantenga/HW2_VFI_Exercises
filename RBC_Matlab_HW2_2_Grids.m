@@ -244,7 +244,7 @@ plot(aComparison{1}(:,1),aComparison{1}(:,2))
 plot(aComparison{2}(:,1),aComparison{2}(:,2),'r')
 plot(aComparison{3}(:,1),aComparison{3}(:,2),'g')
 xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
-legend('19849 Points', '1985 Points', '199 Points')
+legend('Location','Best','19849 Points', '1985 Points', '199 Points')
 title('Value Function for z=0')
 hold off
 
@@ -255,7 +255,7 @@ plot(aComparison{1}(:,1),aComparison{1}(:,3))
 plot(aComparison{2}(:,1),aComparison{2}(:,3),'r')
 plot(aComparison{3}(:,1),aComparison{3}(:,3),'g')
 xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
-legend('19849 Points', '1985 Points', '199 Points')
+legend('Location','Best','19849 Points', '1985 Points', '199 Points')
 title('Policy Function for z=0')
 hold off
 
@@ -265,7 +265,7 @@ hold on
 plot(aComparison{1}(:,1),aComparison{1}(:,4))
 plot(aComparison{2}(:,1),aComparison{2}(:,4),'r')
 plot(aComparison{3}(:,1),aComparison{3}(:,4),'g')
-legend('19849 Points', '1985 Points', '199 Points')
+legend('Location','Best','19849 Points', '1985 Points', '199 Points')
 xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
 title('Labor Function for z=0')
 hold off
@@ -276,10 +276,12 @@ hold on
 plot(aComparison{1}(:,1),aComparison{1}(:,5))
 plot(aComparison{2}(:,1),aComparison{2}(:,5),'r')
 plot(aComparison{3}(:,1),aComparison{3}(:,5),'g')
-legend('19849 Points', '1985 Points', '199 Points')
+legend('Location','Best','19849 Points', '1985 Points', '199 Points')
 xlim([0.5*capitalSteadyState 1.5*capitalSteadyState])
 title('Euler Error for z=0')
 ylabel('Log10|Euler Equation Error|')
 hold off
+
+print -depsc2 HW2_Q2_grids.eps
 
 toc

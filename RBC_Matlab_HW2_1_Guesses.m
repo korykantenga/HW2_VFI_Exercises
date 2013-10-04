@@ -243,7 +243,7 @@ subplot(2,2,1)
 hold on
 plot(vGridCapital,aValueFunction(:,:,2)-aValueFunction(:,:,1),'-x')
 plot(vGridCapital,aValueFunction(:,:,3)-aValueFunction(:,:,2),'--')
-legend('z1','z2','z3','z4','z5')
+legend('Location','Best','z1','z2','z3','z4','z5')
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 ylim([-.000001 .000001])
 title('Deviations from Value Function with Guess Zero')
@@ -254,7 +254,7 @@ subplot(2,2,2)
 hold on
 plot(vGridCapital,aPolicyFunction(:,:,2)-aPolicyFunction(:,:,1),'-x')
 plot(vGridCapital,aPolicyFunction(:,:,3)-aPolicyFunction(:,:,2),'--')
-legend('z1','z2','z3','z4','z5')
+legend('Location','Best','z1','z2','z3','z4','z5')
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 ylim([-.000001 .000001])
 title('Deviations from Policy Function with Guess Zero')
@@ -265,7 +265,7 @@ subplot(2,2,3)
 hold on
 plot(vGridCapital,aLaborFunction(:,:,2)-aLaborFunction(:,:,1),'-x')
 plot(vGridCapital,aLaborFunction(:,:,3)-aLaborFunction(:,:,2),'--')
-legend('z1','z2','z3','z4','z5')
+legend('Location','Best','z1','z2','z3','z4','z5')
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 ylim([-.000001 .000001])
 title('Deviations from Labor Function with Guess Zero')
@@ -277,12 +277,14 @@ hold on
 plot(vGridCapital,aEulerError(:,3,1),'-x')
 plot(vGridCapital,aEulerError(:,3,2),'r--d')
 plot(vGridCapital,aEulerError(:,3,3),'g')
-legend('Guess Zero','Steady State Guess','Deterministic Guess')
+legend('Location','Best','Guess Zero','Steady State Guess','Deterministic Guess')
 xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 title('Euler Error for z = 0')
 ylabel('Log10|Euler Equation Error|')
 xlabel('Capital')
 hold off
+
+print -depsc2 HW2_Q1_guesses.eps
 
 toc
 

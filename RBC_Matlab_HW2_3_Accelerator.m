@@ -321,3 +321,5 @@ xlim([vGridCapital(1) vGridCapital(nGridCapital)])
 legend('Standard VFI','Accelerated VFI')
 title('Euler Error for z=0')
 hold off
+
+print -depsc2 HW2_Q3_accelerator.eps
