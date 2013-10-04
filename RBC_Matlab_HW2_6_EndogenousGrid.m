@@ -49,144 +49,6 @@ fprintf(' Output = %2.6f, Labor = %2.6f\n',outputSteadyState, laborSteadyState);
 fprintf(' Capital = %2.6f, Consumption = %2.6f\n',  capitalSteadyState, consumptionSteadyState);
 fprintf('\n');
 
-%% 3. Initial Guess (interpolated multigrid)
-
-fprintf('Guess V-Tilda using interpolated multigrid\n')
-
-%Multigrid first Step
-nCapitalGrids = 1;
-for iCapitalStep = 1:nCapitalGrids
-    capitalStepSize = 6*(10^-(iCapitalStep+2)); %GridSizes:199,1985,19849
-    aCapitalGrids{iCapitalStep} = 0.5*capitalSteadyState:capitalStepSize:1.5*capitalSteadyState; %#ok<SAGROW>
-end
-vTime = zeros(nCapitalGrids+1,1);
-
-iTime = tic;
-for iCapitalStep = 1:1
-    
-    timeVFI = tic;
-    
-    %Set old grid and value function if not first loop
-    if (iCapitalStep>1)
-        vOldGridCapital = aCapitalGrids{iCapitalStep-1};
-        mOldValueFunction = mValueFunction;
-    end
-    
-    vGridCapital = aCapitalGrids{iCapitalStep};
-    nGridCapital = length(vGridCapital);
-    
-    fprintf('Grid Step %d', iCapitalStep);
-    fprintf('\n');
-    fprintf('Grid Size = %d', nGridCapital);
-    fprintf(' points\n');
-    
-    %% 6. Required matrices and vectors
-    mOutput           = zeros(nGridCapital,nGridProductivity,nGridLabor);
-    mLabor            = zeros(nGridCapital,nGridProductivity);
-    mValueFunction    = zeros(nGridCapital,nGridProductivity);
-    mValueFunctionNew = zeros(nGridCapital,nGridProductivity);
-    mPolicyFunction   = zeros(nGridCapital,nGridProductivity);
-    mConsumptionFunction = zeros(nGridCapital,nGridProductivity);
-    expectedValueFunction = zeros(nGridCapital,nGridProductivity); %#ok<NASGU>
-    
-    %% 7. Interpolate new guess for value function
-    if (iCapitalStep>1)
-        F = griddedInterpolant({vOldGridCapital',vProductivity},mOldValueFunction,'spline');
-        mValueFunction = F({vGridCapital',vProductivity});
-    end
-    
-    %% 8. We pre-build output for each point in the grid
-    
-    for j = 1:nGridLabor
-        
-        mOutput(:,:,j) = (vGridCapital'.^aalpha)*vProductivity*(vGridLabor(j)^...
-            (1-aalpha));
-        
-    end
-    
-    %% 9. Main iteration
-    
-    maxDifference = 10.0;
-    maxIteration = 500; %TODO: change?
-    tolerance = 10^-(iCapitalStep+3); %FIXME: tolerance level increases with grid increase
-    iteration = 0;
-    
-    while (maxDifference>tolerance)&&(iteration<maxIteration)
-        
-        expectedValueFunction = mValueFunction*mTransition';
-        
-        for nProductivity = 1:nGridProductivity
-            
-            % We start from previous choice (monotonicity of policy function)
-            gridCapitalNextPeriod = 1;
-            
-            for nCapital = 1:nGridCapital
-                
-                valueHighSoFar1 = -1000.0;
-                capitalChoice  = vGridCapital(1);
-                
-                for nCapitalNextPeriod = gridCapitalNextPeriod:nGridCapital
-                    
-                    valueHighSoFar2 = -1000.0;
-                    
-                    for nLabor = 1:nGridLabor
-                        
-                        consumption = mOutput(nCapital,nProductivity,nLabor)+...
-                            (1-ddelta)*vGridCapital(nCapital)-vGridCapital(nCapitalNextPeriod);
-                        valueProvisional = (1-bbeta)*(log(consumption)-ppsi*...
-                            (vGridLabor(nLabor)^2)/2)+bbeta*expectedValueFunction(nCapitalNextPeriod,nProductivity);
-                        
-                        if (valueProvisional>valueHighSoFar2)
-                            valueHighSoFar2 = valueProvisional;
-                            laborChoice = vGridLabor(nLabor);
-                            gridLabor = nLabor;
-                        else
-                            break; %We break when we have achieved the max
-                        end
-                    end
-                    
-                    
-                    if (valueProvisional>valueHighSoFar1)
-                        valueHighSoFar1 = valueProvisional;
-                        capitalChoice = vGridCapital(nCapitalNextPeriod);
-                        gridCapitalNextPeriod = nCapitalNextPeriod;
-                    else
-                        break; % We break when we have achieved the max
-                    end
-                end
-                
-                mValueFunctionNew(nCapital,nProductivity) = valueHighSoFar1;
-                mPolicyFunction(nCapital,nProductivity) = capitalChoice;
-                mLabor(nCapital,nProductivity) = laborChoice; %Labor function choosing next period capital optimally
-                mConsumptionFunction(nCapital,nProductivity) = consumption;
-                
-            end %end for capital grid loop
-            
-        end %end of productivity grid loop
-        
-        maxDifference = max(max(abs(mValueFunctionNew-mValueFunction)));
-        mValueFunction = mValueFunctionNew;
-        
-        iteration = iteration+1;
-        if (mod(iteration,10)==0 || iteration ==1)
-            fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference);
-        end
-        
-    end
-    
-    fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference);
-    fprintf('\n')
-    
-    vTime(iCapitalStep,1) = toc(timeVFI);
-    fprintf('Time for step VFI = %2.8f', vTime(iCapitalStep,1));
-    fprintf(' seconds\n');
-    fprintf('\n')
-    
-end
-fprintf(' Iteration = %d, Sup Diff = %2.8f\n', iteration, maxDifference);
-fprintf('\n')
-
-
 %% 4. Required matrices and vectors
 
 % We generate the grid of capital
@@ -203,6 +65,7 @@ mConsumption = zeros(nGridCapital,nGridProductivity);
 mResources        = zeros(nGridCapital,nGridProductivity);
 mLabor            = zeros(nGridCapital,nGridProductivity);
 mValueFunctionRes = zeros(nGridCapital,nGridProductivity);
+mValueFunctionTilda = zeros(nGridCapital,nGridProductivity);
 mValueFunctionTildaNew = zeros(nGridCapital,nGridProductivity);
 mValueFunctionTildaDerivative = zeros(nGridCapital,nGridProductivity);
 mPolicyFunction = zeros(nGridCapital,nGridProductivity);
@@ -212,16 +75,10 @@ expectedValueFunction = zeros(nGridCapital,nGridProductivity);
 
 mOutput = (vGridCapital'.^aalpha)*vProductivity*(laborSteadyState^(1-aalpha));
 
-%Interpolation
-vOldGridCapital = aCapitalGrids{nCapitalGrids};
-nOldGripCapital = length(vOldGridCapital);
-mOldValueFunction = mValueFunction;
-
-F = griddedInterpolant({vOldGridCapital',vProductivity},mOldValueFunction,...
-    'spline');
-mValueFunctionTilda = F({vGridCapital',vProductivity});
-
-
+% Use straight line as guess
+for nProductivity = 1:nGridProductivity
+    mValueFunctionTilda(:,nProductivity) = linspace(-1.5,-1,nGridCapital);
+end
 
 %% 6. Endogenous Grid iteration (labor fixed at Steady State)
 
@@ -233,14 +90,14 @@ fprintf('Endogenous Grid VFI\n')
 
 while (maxDifference>tolerance)
     
-    %Derivative V-tilda    
+    %Derivative V-tilda
     for nProductivity = 1:nGridProductivity
         tempStore = diff(mValueFunctionTilda(:,nProductivity))/0.00006;
         a = tempStore(1,1);
         mValueFunctionTildaDerivative(:,nProductivity) =...
             vertcat(a,tempStore);
     end
-        
+    
     %Solve for consumption
     mConsumption = 1./mValueFunctionTildaDerivative;
     
